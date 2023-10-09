@@ -11,6 +11,7 @@
 
 
 #include <ctype.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,89 @@ static int luaB_print (lua_State *L) {
   return 0;
 }
 
+static int luaB_printwithtime (lua_State *L) {
+  static time_t timer;
+  static struct tm* ptime = NULL;
+  static char szbuff[256] = {0};
+
+  memset(szbuff, 0, sizeof(szbuff));
+
+  int n = lua_gettop(L);  /* number of arguments */
+  int i;
+  for (i = 1; i <= n; i++) {  /* for each argument */
+    size_t l;
+    const char *s = luaL_tolstring(L, i, &l);  /* convert it to string */
+    if (i > 1)  /* not the first element? */
+      lua_writestring("\t", 1);  /* add a tab before it */
+    else
+    {
+      time(&timer);
+      ptime = localtime(&timer);
+      snprintf(szbuff, sizeof(szbuff), "[%d-%02d-%02d %02d:%02d:%02d] ", ptime->tm_year + 1900, ptime->tm_mon + 1, ptime->tm_mday, ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
+      lua_writestring(szbuff, strlen(szbuff) + 1);
+    }
+    lua_writestring(s, l);  /* print it */
+    lua_pop(L, 1);  /* pop result */
+  }
+  lua_writeline();
+  return 0;
+}
+
+static int luaB_printwarning (lua_State *L) {
+  static time_t timer;
+  static struct tm* ptime = NULL;
+  static char szbuff[256] = {0};
+
+  memset(szbuff, 0, sizeof(szbuff));
+
+  int n = lua_gettop(L);  /* number of arguments */
+  int i;
+  for (i = 1; i <= n; i++) {  /* for each argument */
+    size_t l;
+    const char *s = luaL_tolstring(L, i, &l);  /* convert it to string */
+    if (i > 1)  /* not the first element? */
+      lua_writestring("\t", 1);  /* add a tab before it */
+    else
+    {
+      time(&timer);
+      ptime = localtime(&timer);
+      snprintf(szbuff, sizeof(szbuff), "[%d-%02d-%02d %02d:%02d:%02d] warning ", ptime->tm_year + 1900, ptime->tm_mon + 1, ptime->tm_mday, ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
+      lua_writestring(szbuff, strlen(szbuff) + 1);
+    }
+    lua_writestring(s, l);  /* print it */
+    lua_pop(L, 1);  /* pop result */
+  }
+  lua_writeline();
+  return 0;
+}
+
+static int luaB_printerror (lua_State *L) {
+  static time_t timer;
+  static struct tm* ptime = NULL;
+  static char szbuff[256] = {0};
+
+  memset(szbuff, 0, sizeof(szbuff));
+
+  int n = lua_gettop(L);  /* number of arguments */
+  int i;
+  for (i = 1; i <= n; i++) {  /* for each argument */
+    size_t l;
+    const char *s = luaL_tolstring(L, i, &l);  /* convert it to string */
+    if (i > 1)  /* not the first element? */
+      lua_writestring("\t", 1);  /* add a tab before it */
+    else
+    {
+      time(&timer);
+      ptime = localtime(&timer);
+      snprintf(szbuff, sizeof(szbuff), "[%d-%02d-%02d %02d:%02d:%02d] error ", ptime->tm_year + 1900, ptime->tm_mon + 1, ptime->tm_mday, ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
+      lua_writestring(szbuff, strlen(szbuff) + 1);
+    }
+    lua_writestring(s, l);  /* print it */
+    lua_pop(L, 1);  /* pop result */
+  }
+  lua_writeline();
+  return 0;
+}
 
 /*
 ** Creates a warning with all given arguments.
@@ -515,7 +599,10 @@ static const luaL_Reg base_funcs[] = {
   {"next", luaB_next},
   {"pairs", luaB_pairs},
   {"pcall", luaB_pcall},
-  {"print", luaB_print},
+  {"print", luaB_printwithtime},
+  {"printdef", luaB_print},
+  {"printwarning", luaB_printwarning},
+  {"printerror", luaB_printerror},
   {"warn", luaB_warn},
   {"rawequal", luaB_rawequal},
   {"rawlen", luaB_rawlen},

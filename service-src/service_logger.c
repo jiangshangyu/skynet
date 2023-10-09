@@ -46,6 +46,10 @@ timestring(struct logger *inst, char tmp[SIZETIMEFMT]) {
 
 static int
 logger_cb(struct skynet_context * context, void *ud, int type, int session, uint32_t source, const void * msg, size_t sz) {
+	static time_t timer;
+  	static struct tm* ptime = NULL;
+	static char tmp[SIZETIMEFMT] = {0};
+
 	struct logger * inst = ud;
 	switch (type) {
 	case PTYPE_SYSTEM:
@@ -54,8 +58,15 @@ logger_cb(struct skynet_context * context, void *ud, int type, int session, uint
 		}
 		break;
 	case PTYPE_TEXT:
+		memset(tmp, 0, sizeof(tmp));
+
+		time(&timer);
+      	ptime = localtime(&timer);
+      	snprintf(tmp, sizeof(tmp), "[%d-%02d-%02d %02d:%02d:%02d]", ptime->tm_year + 1900, ptime->tm_mon + 1, ptime->tm_mday, ptime->tm_hour, ptime->tm_min, ptime->tm_sec);
+		fprintf(inst->handle, "%s ", tmp);
+
 		if (inst->filename) {
-			char tmp[SIZETIMEFMT];
+			memset(tmp, 0, sizeof(tmp));
 			int csec = timestring(ud, tmp);
 			fprintf(inst->handle, "%s.%02d ", tmp, csec);
 		}
