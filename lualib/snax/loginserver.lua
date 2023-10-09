@@ -12,16 +12,10 @@ Protocol:
 
 	line (\n) based text protocol
 
-	1. Server->Client : base64(8bytes random challenge)
-	2. Client->Server : base64(8bytes handshake client key)
-	3. Server: Gen a 8bytes handshake server key
-	4. Server->Client : base64(DH-Exchange(server key))
-	5. Server/Client secret := DH-Secret(client key/server key)
-	6. Client->Server : base64(HMAC(challenge, secret))
-	7. Client->Server : DES(secret, base64(token))
-	8. Server : call auth_handler(token) -> server, uid (A user defined method)
-	9. Server : call login_handler(server, uid, secret) ->subid (A user defined method)
-	10. Server->Client : 200 base64(subid)
+	1. Client->Server : DES(base64(token))
+	2. Server : call auth_handler(token) -> uid (A user defined method)
+	3. Server : call login_handler(uid) ->subid (A user defined method)
+	4. Server->Client : 200 base64(subid)
 
 Error Code:
 	401 Unauthorized . unauthorized by auth_handler
@@ -52,33 +46,13 @@ local function launch_slave(auth_handler)
 		-- If the attacker send large package, close the socket
 		socket.limit(fd, 8192)
 
-		local challenge = crypt.randomkey()
-		write("auth", fd, crypt.base64encode(challenge).."\n")
+		local etoken = assert_socket("auth", socket.readline(fd), fd)
 
-		local handshake = assert_socket("auth", socket.readline(fd), fd)
-		local clientkey = crypt.base64decode(handshake)
-		if #clientkey ~= 8 then
-			error "Invalid client key"
-		end
-		local serverkey = crypt.randomkey()
-		write("auth", fd, crypt.base64encode(crypt.dhexchange(serverkey)).."\n")
+		local token = crypt.base64decode(etoken)
 
-		local secret = crypt.dhsecret(clientkey, serverkey)
+		local ok, uid =  pcall(auth_handler, token)
 
-		local response = assert_socket("auth", socket.readline(fd), fd)
-		local hmac = crypt.hmac64(challenge, secret)
-
-		if hmac ~= crypt.base64decode(response) then
-			error "challenge failed"
-		end
-
-		local etoken = assert_socket("auth", socket.readline(fd),fd)
-
-		local token = crypt.desdecode(secret, crypt.base64decode(etoken))
-
-		local ok, server, uid =  pcall(auth_handler,token)
-
-		return ok, server, uid, secret
+		return ok, uid
 	end
 
 	local function ret_pack(ok, err, ...)
@@ -115,14 +89,13 @@ local user_login = {}
 
 local function accept(conf, s, fd, addr)
 	-- call slave auth
-	local ok, server, uid, secret = skynet.call(s, "lua",  fd, addr)
+	local ok, uid = skynet.call(s, "lua",  fd, addr)
 	-- slave will accept(start) fd, so we can write to fd later
 
 	if not ok then
 		if ok ~= nil then
 			write("response 401", fd, "401 Unauthorized\n")
 		end
-		error(server)
 	end
 
 	if not conf.multilogin then
@@ -134,7 +107,7 @@ local function accept(conf, s, fd, addr)
 		user_login[uid] = true
 	end
 
-	local ok, err = pcall(conf.login_handler, server, uid, secret)
+	local ok, err = pcall(conf.login_handler, uid)
 	-- unlock login
 	user_login[uid] = nil
 

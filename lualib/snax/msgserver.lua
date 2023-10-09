@@ -17,7 +17,7 @@ Protocol:
 
 	Client -> Server :
 
-	base64(uid)@base64(server)#base64(subid):index:base64(hmac)
+	base64(uid)#base64(subid):index
 
 	Server -> Client
 
@@ -43,13 +43,13 @@ Protocol:
 
 API:
 	server.userid(username)
-		return uid, subid, server
+		return uid, subid
 
-	server.username(uid, subid, server)
+	server.username(uid, subid)
 		return username
 
-	server.login(username, secret)
-		update user secret
+	server.login(username)
+		update user
 
 	server.logout(username)
 		user logout
@@ -62,12 +62,12 @@ API:
 
 Supported skynet command:
 	kick username (may used by loginserver)
-	login username secret  (used by loginserver)
+	login username  (used by loginserver)
 	logout username (used by agent)
 
 Config for server.start:
 	conf.expired_number : the number of the response message cached after sending out (default is 128)
-	conf.login_handler(uid, secret) -> subid : the function when a new user login, alloc a subid for it. (may call by login server)
+	conf.login_handler(uid) -> subid : the function when a new user login, alloc a subid for it. (may call by login server)
 	conf.logout_handler(uid, subid) : the functon when a user logout. (may call by agent)
 	conf.kick_handler(uid, subid) : the functon when a user logout. (may call by login server)
 	conf.request_handler(username, session, msg) : the function when recv a new request.
@@ -87,13 +87,13 @@ local handshake = {}
 local connection = {}
 
 function server.userid(username)
-	-- base64(uid)@base64(server)#base64(subid)
-	local uid, servername, subid = username:match "([^@]*)@([^#]*)#(.*)"
-	return b64decode(uid), b64decode(subid), b64decode(servername)
+	-- base64(uid)#base64(subid)
+	local uid, subid = username:match "([^#]*)#(.*)"
+	return b64decode(uid), b64decode(subid)
 end
 
-function server.username(uid, subid, servername)
-	return string.format("%s@%s#%s", b64encode(uid), b64encode(servername), b64encode(tostring(subid)))
+function server.username(uid, subid)
+	return string.format("%s#%s", b64encode(uid), b64encode(tostring(subid)))
 end
 
 function server.logout(username)
@@ -107,10 +107,9 @@ function server.logout(username)
 	end
 end
 
-function server.login(username, secret)
+function server.login(username)
 	assert(user_online[username] == nil)
 	user_online[username] = {
-		secret = secret,
 		version = 0,
 		index = 0,
 		username = username,
@@ -141,9 +140,8 @@ function server.start(conf)
 		return f(...)
 	end
 
-	function handler.open(source, gateconf)
-		local servername = assert(gateconf.servername)
-		return conf.register_handler(servername)
+	function handler.open(source)
+		return conf.register_handler()
 	end
 
 	function handler.connect(fd, addr)
@@ -171,22 +169,18 @@ function server.start(conf)
 
 	-- atomic , no yield
 	local function do_auth(fd, message, addr)
-		local username, index, hmac = string.match(message, "([^:]*):([^:]*):([^:]*)")
+		local handshake = crypt.base64decode(message)
+
+		local username, index = string.match(handshake, "([^:]*):([^:]*)")
+
 		local u = user_online[username]
 		if u == nil then
 			return "404 User Not Found"
 		end
-		local idx = assert(tonumber(index))
-		hmac = b64decode(hmac)
 
+		local idx = assert(tonumber(index))
 		if idx <= u.version then
 			return "403 Index Expired"
-		end
-
-		local text = string.format("%s:%s", username, index)
-		local v = crypt.hmac_hash(u.secret, text)	-- equivalent to crypt.hmac64(crypt.hashkey(text), u.secret)
-		if v ~= hmac then
-			return "401 Unauthorized"
 		end
 
 		u.version = idx
