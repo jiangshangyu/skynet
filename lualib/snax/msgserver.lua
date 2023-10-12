@@ -124,6 +124,13 @@ function server.ip(username)
 	end
 end
 
+function server.fd(username)
+	local u = user_online[username]
+	if u then
+		return u.fd
+	end
+end
+
 function server.start(conf)
 	local expired_number = conf.expired_number or 128
 
@@ -133,6 +140,7 @@ function server.start(conf)
 		login = assert(conf.login_handler),
 		logout = assert(conf.logout_handler),
 		kick = assert(conf.kick_handler),
+		flush = assert(conf.flush_handler),
 	}
 
 	function handler.command(cmd, source, ...)
