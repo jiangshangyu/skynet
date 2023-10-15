@@ -52,7 +52,7 @@ function gateserver.start(handler)
 		listen_context = nil
 		socketdriver.start(socket)
 		if handler.open then
-			return handler.open(source)
+			return handler.open(source, conf)
 		end
 	end
 
