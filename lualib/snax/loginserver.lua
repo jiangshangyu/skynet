@@ -101,6 +101,7 @@ local function accept(conf, s, fd, addr)
 	if not conf.multilogin then
 		if user_login[uid] then
 			write("response 406", fd, "406 Not Acceptable\n")
+
 			error(string.format("User %s is already login", uid))
 		end
 
@@ -113,9 +114,11 @@ local function accept(conf, s, fd, addr)
 
 	if ok then
 		err = err or ""
+
 		write("response 200",fd,  "200 "..crypt.base64encode(err).."\n")
 	else
 		write("response 403",fd,  "403 Forbidden\n")
+		
 		error(err)
 	end
 end
@@ -123,8 +126,10 @@ end
 local function launch_master(conf)
 	local instance = conf.instance or 8
 	assert(instance > 0)
+
 	local host = conf.host or "0.0.0.0"
 	local port = assert(tonumber(conf.port))
+
 	local slave = {}
 	local balance = 1
 
@@ -137,13 +142,17 @@ local function launch_master(conf)
 	end
 
 	skynet.error(string.format("login server listen at : %s %d", host, port))
+
 	local id = socket.listen(host, port)
+
 	socket.start(id , function(fd, addr)
 		local s = slave[balance]
+
 		balance = balance + 1
 		if balance > #slave then
 			balance = 1
 		end
+
 		local ok, err = pcall(accept, conf, s, fd, addr)
 		if not ok then
 			if err ~= socket_error then
@@ -162,13 +171,17 @@ local function login(conf)
 			local auth_handler = assert(conf.auth_handler)
 			launch_master = nil
 			conf = nil
+
 			launch_slave(auth_handler)
 		else
 			launch_slave = nil
 			conf.auth_handler = nil
+
 			assert(conf.login_handler)
 			assert(conf.command_handler)
+
 			skynet.register(name)
+
 			launch_master(conf)
 		end
 	end)

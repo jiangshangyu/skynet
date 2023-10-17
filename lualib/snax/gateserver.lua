@@ -26,6 +26,7 @@ function gateserver.closeclient(fd)
 	local c = connection[fd]
 	if c ~= nil then
 		connection[fd] = nil
+		
 		socketdriver.close(fd)
 	end
 end

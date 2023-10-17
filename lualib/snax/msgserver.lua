@@ -83,6 +83,7 @@ skynet.register_protocol {
 }
 
 local user_online = {}
+
 local handshake = {}
 local connection = {}
 
@@ -98,10 +99,13 @@ end
 
 function server.logout(username)
 	local u = user_online[username]
+
 	user_online[username] = nil
+
 	if u.fd then
 		if connection[u.fd] then
 			gateserver.closeclient(u.fd)
+
 			connection[u.fd] = nil
 		end
 	end
@@ -109,6 +113,7 @@ end
 
 function server.login(username)
 	assert(user_online[username] == nil)
+	
 	user_online[username] = {
 		version = 0,
 		index = 0,
