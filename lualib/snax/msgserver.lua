@@ -113,7 +113,7 @@ end
 
 function server.login(username)
 	assert(user_online[username] == nil)
-	
+	skynet.error(string.format("msgserver login username=%s", username))
 	user_online[username] = {
 		version = 0,
 		index = 0,
@@ -186,7 +186,7 @@ function server.start(conf)
 		local handshake = crypt.base64decode(message)
 
 		local username, index = string.match(handshake, "([^:]*):([^:]*)")
-
+		skynet.error(string.format("msgserver do_auth username=%s", username))
 		local u = user_online[username]
 		if u == nil then
 			return "404 User Not Found"

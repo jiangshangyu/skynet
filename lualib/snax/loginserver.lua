@@ -113,7 +113,7 @@ local function accept(conf, s, fd, addr)
 	user_login[account] = nil
 
 	if ok then
-		write("response 200", fd,  "200 "..string.format("%d@%d:%d", crypt.base64encode(uid), crypt.base64encode(subid), crypt.base64encode(logincode)).."\n")
+		write("response 200", fd,  "200 "..string.format("%s@%s:%s", crypt.base64encode(uid), crypt.base64encode(subid), crypt.base64encode(logincode)).."\n")
 	else
 		write("response 403", fd,  "403 \n")
 		
