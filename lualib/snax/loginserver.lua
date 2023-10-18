@@ -50,9 +50,9 @@ local function launch_slave(auth_handler)
 
 		local token = crypt.base64decode(etoken)
 
-		local ok, uid =  pcall(auth_handler, token)
+		local ok, account =  pcall(auth_handler, token)
 
-		return ok, uid
+		return ok, account
 	end
 
 	local function ret_pack(ok, err, ...)
@@ -89,37 +89,35 @@ local user_login = {}
 
 local function accept(conf, s, fd, addr)
 	-- call slave auth
-	local ok, uid = skynet.call(s, "lua",  fd, addr)
+	local ok, account = skynet.call(s, "lua",  fd, addr)
 	-- slave will accept(start) fd, so we can write to fd later
 
 	if not ok then
 		if ok ~= nil then
-			write("response 401", fd, "401 Unauthorized\n")
+			write("response 401", fd, "401 \n")
 		end
 	end
 
 	if not conf.multilogin then
-		if user_login[uid] then
-			write("response 406", fd, "406 Not Acceptable\n")
+		if user_login[account] then
+			write("response 406", fd, "406 \n")
 
-			error(string.format("User %s is already login", uid))
+			error(string.format("User %s is already login", account))
 		end
 
-		user_login[uid] = true
+		user_login[account] = true
 	end
 
-	local ok, err = pcall(conf.login_handler, uid)
+	local ok, uid, subid, logincode = pcall(conf.login_handler, account)
 	-- unlock login
-	user_login[uid] = nil
+	user_login[account] = nil
 
 	if ok then
-		err = err or ""
-
-		write("response 200",fd,  "200 "..crypt.base64encode(err).."\n")
+		write("response 200", fd,  "200 "..string.format("%d@%d:%d", crypt.base64encode(uid), crypt.base64encode(subid), crypt.base64encode(logincode)).."\n")
 	else
-		write("response 403",fd,  "403 Forbidden\n")
+		write("response 403", fd,  "403 \n")
 		
-		error(err)
+		error("loginserver accept failed")
 	end
 end
 

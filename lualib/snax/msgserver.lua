@@ -146,6 +146,7 @@ function server.start(conf)
 		logout = assert(conf.logout_handler),
 		kick = assert(conf.kick_handler),
 		flush = assert(conf.flush_handler),
+		flushuid = assert(conf.flushuid_handler),
 	}
 
 	function handler.command(cmd, source, ...)
